@@ -9,6 +9,7 @@ mod auth;
 mod health;
 mod middleware_auth;
 mod tasks;
+mod projects;
 
 
 pub use auth::register;
@@ -23,6 +24,12 @@ pub fn routes() -> Router<AppState> {
     .route("/", post(tasks::routes::create).get(tasks::routes::list))
     .route("/{id}", put(tasks::routes::update).delete(tasks::routes::delete));
 
+    let projects_router = Router::new()
+        .route("/", post(projects::routes::create).get(projects::routes::list))
+        .route("/{id}", get(projects::routes::get).put(projects::routes::update).delete(projects::routes::delete)
+    )
+    .route("/{id}/regenerate-key", post(projects::routes::regenerate_key));
+      
     Router::new()
         .route("/", get(root))
         .route("/health", get(health))
@@ -33,6 +40,7 @@ pub fn routes() -> Router<AppState> {
             Router::new()
                 .route("/me", get(me_handler))
                 .nest("/task", task_router)
+                .nest("/projects", projects_router)
                 .layer(middleware::from_fn(middleware_auth::require_auth)),
         )
 }
