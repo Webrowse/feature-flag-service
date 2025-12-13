@@ -6,6 +6,7 @@ CREATE TABLE projects (
     name TEXT NOT NULL,
     description TEXT,
     sdk_key TEXT UNIQUE NOT NULL, -- For API authentication
+    created_by UUID NOT NULL REFERENCES users(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -31,6 +32,7 @@ CREATE TABLE flag_rules (
     rule_type TEXT NOT NULL, -- 'user_id', 'user_email', 'attribute_match'
     rule_value TEXT NOT NULL, -- The actual value to match
     enabled BOOLEAN DEFAULT TRUE,
+    priority INT DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -44,8 +46,11 @@ CREATE TABLE flag_evaluations (
 );
 
 -- Indexes for fast lookups
+CREATE INDEX idx_projects_created_by ON projects(created_by);
 CREATE INDEX idx_flags_project ON feature_flags(project_id);
-CREATE INDEX idx_flags_key ON feature_flags(key);
+CREATE INDEX idx_flags_project_key ON feature_flags(project_id, key);
 CREATE INDEX idx_rules_flag ON flag_rules(flag_id);
-CREATE INDEX idx_evaluations_flag ON flag_evaluations(flag_id, evaluated_at);
+CREATE INDEX idx_rules_flag_priority ON flag_rules(flag_id, priority DESC);
+CREATE INDEX idx_evaluations_flag_time ON flag_evaluations(flag_id, evaluated_at DESC);
+CREATE INDEX idx_project_sdk_key ON projects(sdk_key);
 
