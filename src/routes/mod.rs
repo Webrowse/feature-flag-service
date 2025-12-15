@@ -1,16 +1,15 @@
 use axum::{
-    Router,
     extract::Request,
     middleware,
     routing::{get, post, put},
+    Router,
 };
 
 mod auth;
 mod health;
 mod middleware_auth;
-mod tasks;
 mod projects;
-
+mod tasks;
 
 pub use auth::register;
 pub use health::health;
@@ -19,17 +18,29 @@ use crate::routes::auth::login;
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
-
     let task_router = Router::new()
-    .route("/", post(tasks::routes::create).get(tasks::routes::list))
-    .route("/{id}", put(tasks::routes::update).delete(tasks::routes::delete));
+        .route("/", post(tasks::routes::create).get(tasks::routes::list))
+        .route(
+            "/{id}",
+            put(tasks::routes::update).delete(tasks::routes::delete),
+        );
 
     let projects_router = Router::new()
-        .route("/", post(projects::routes::create).get(projects::routes::list))
-        .route("/{id}", get(projects::routes::get).put(projects::routes::update).delete(projects::routes::delete)
-    )
-    .route("/{id}/regenerate-key", post(projects::routes::regenerate_key));
-      
+        .route(
+            "/",
+            post(projects::routes::create).get(projects::routes::list),
+        )
+        .route(
+            "/{id}",
+            get(projects::routes::get)
+                .put(projects::routes::update)
+                .delete(projects::routes::delete),
+        )
+        .route(
+            "/{id}/regenerate-key",
+            post(projects::routes::regenerate_key),
+        );
+
     Router::new()
         .route("/", get(root))
         .route("/health", get(health))

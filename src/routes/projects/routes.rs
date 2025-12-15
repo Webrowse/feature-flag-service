@@ -7,17 +7,18 @@ use axum::{
 };
 use uuid::Uuid;
 
+use super::{
+    generate_sdk_key, CreateProjectRequest, Project, ProjectResponse, UpdateProjectRequest,
+};
 use crate::routes::middleware_auth::JwtUser;
 use crate::state::AppState;
-use super::{CreateProjectRequest, UpdateProjectRequest, Project, ProjectResponse, generate_sdk_key};
-
 
 // HANDLERS
 
 /// Create a new project
 pub async fn create(
     State(state): State<AppState>,
-    JwtUser(user_id): JwtUser,  // ← Tuple struct destructuring
+    JwtUser(user_id): JwtUser, // ← Tuple struct destructuring
     Json(payload): Json<CreateProjectRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // Generate a secure SDK key (this is what client apps will use)
@@ -38,7 +39,10 @@ pub async fn create(
     .await
     .map_err(|e| {
         eprintln!("Failed to create project: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e))
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
     })?;
 
     let response = ProjectResponse {
@@ -70,7 +74,10 @@ pub async fn list(
     .await
     .map_err(|e| {
         eprintln!("Failed to fetch projects: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch projects".to_string())
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to fetch projects".to_string(),
+        )
     })?;
 
     let response: Vec<ProjectResponse> = projects
@@ -106,7 +113,10 @@ pub async fn get(
     .await
     .map_err(|e| {
         eprintln!("Failed to fetch project: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch project".to_string())
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to fetch project".to_string(),
+        )
     })?;
 
     match project {
@@ -134,7 +144,7 @@ pub async fn update(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // First check if project exists and belongs to user
     let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1 AND created_by = $2)"
+        "SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1 AND created_by = $2)",
     )
     .bind(project_id)
     .bind(user_id)
@@ -142,7 +152,10 @@ pub async fn update(
     .await
     .map_err(|e| {
         eprintln!("Failed to check project: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Database error".to_string(),
+        )
     })?;
 
     if !exists {
@@ -162,7 +175,11 @@ pub async fn update(
         bind_count += 1;
     }
 
-    query.push_str(&format!(" WHERE id = ${} AND created_by = ${} RETURNING *", bind_count, bind_count + 1));
+    query.push_str(&format!(
+        " WHERE id = ${} AND created_by = ${} RETURNING *",
+        bind_count,
+        bind_count + 1
+    ));
 
     let mut query_builder = sqlx::query_as::<_, Project>(&query);
 
@@ -180,7 +197,10 @@ pub async fn update(
         .await
         .map_err(|e| {
             eprintln!("Failed to update project: {:?}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to update project".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to update project".to_string(),
+            )
         })?;
 
     let response = ProjectResponse {
@@ -213,7 +233,10 @@ pub async fn delete(
     .await
     .map_err(|e| {
         eprintln!("Failed to delete project: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete project".to_string())
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to delete project".to_string(),
+        )
     })?;
 
     if result.rows_affected() == 0 {
@@ -246,7 +269,10 @@ pub async fn regenerate_key(
     .await
     .map_err(|e| {
         eprintln!("Failed to regenerate SDK key: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, "Failed to regenerate SDK key".to_string())
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to regenerate SDK key".to_string(),
+        )
     })?;
 
     match project {

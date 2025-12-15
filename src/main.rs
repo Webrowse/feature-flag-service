@@ -4,7 +4,6 @@ mod state;
 
 use sqlx::PgPool;
 
-
 #[tokio::main]
 async fn main() {
     let config = config::Config::from_env();
@@ -13,7 +12,7 @@ async fn main() {
         .await
         .expect("Error connecting DB");
 
-    let state = state::AppState{db};
+    let state = state::AppState { db };
 
     let app = routes::routes().with_state(state);
 
@@ -23,4 +22,3 @@ async fn main() {
 
     axum::serve(listener, app).await.unwrap();
 }
-

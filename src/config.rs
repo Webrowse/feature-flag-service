@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use dotenvy::dotenv;
+use serde::Deserialize;
 use std::env;
 
 #[derive(Deserialize)]

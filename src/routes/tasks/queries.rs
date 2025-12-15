@@ -1,8 +1,6 @@
-
-
+use super::model::Task;
 use sqlx::{PgPool, Result};
 use uuid::Uuid;
-use super::model::Task;
 
 pub async fn create_task(pool: &PgPool, user_id: Uuid, title: &str) -> Result<Task> {
     let rec = sqlx::query_as!(
@@ -39,7 +37,13 @@ pub async fn list_tasks(pool: &PgPool, user_id: Uuid) -> Result<Vec<Task>> {
     Ok(rec)
 }
 
-pub async fn update_task(pool: &PgPool, user_id: Uuid, id: Uuid, title: Option<String>, done: Option<bool>) -> Result<Task> {
+pub async fn update_task(
+    pool: &PgPool,
+    user_id: Uuid,
+    id: Uuid,
+    title: Option<String>,
+    done: Option<bool>,
+) -> Result<Task> {
     let rec = sqlx::query_as!(
         Task,
         r#"
@@ -50,8 +54,13 @@ pub async fn update_task(pool: &PgPool, user_id: Uuid, id: Uuid, title: Option<S
         WHERE id = $2 AND user_id = $1
         RETURNING id, user_id, title, done, created_at
         "#,
-        user_id, id, title, done
-    ).fetch_one(pool).await?;
+        user_id,
+        id,
+        title,
+        done
+    )
+    .fetch_one(pool)
+    .await?;
 
     Ok(rec)
 }
@@ -62,8 +71,11 @@ pub async fn delete_task(pool: &PgPool, user_id: Uuid, id: Uuid) -> Result<()> {
         DELETE FROM tasks
         WHERE id = $1 AND user_id = $2
         "#,
-        id, user_id
-    ).execute(pool).await?;
+        id,
+        user_id
+    )
+    .execute(pool)
+    .await?;
 
     Ok(())
 }

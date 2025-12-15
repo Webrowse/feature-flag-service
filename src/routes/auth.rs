@@ -1,14 +1,18 @@
-use axum::{ extract::{ Json, State }, http::StatusCode, response::IntoResponse, };
-use serde::{Deserialize, Serialize};
 use crate::state::AppState;
-use uuid::Uuid;
-use argon2::{Argon2, PasswordHasher, PasswordVerifier };
-use rand::rngs::OsRng;
-use argon2::password_hash::{SaltString, PasswordHash};
-use jsonwebtoken::{EncodingKey, Header, encode };
-use std::env;
+use argon2::password_hash::{PasswordHash, SaltString};
+use argon2::{Argon2, PasswordHasher, PasswordVerifier};
+use axum::{
+    extract::{Json, State},
+    http::StatusCode,
+    response::IntoResponse,
+};
+use chrono::Duration;
 use chrono::Utc;
-use chrono::Duration; 
+use jsonwebtoken::{encode, EncodingKey, Header};
+use rand::rngs::OsRng;
+use serde::{Deserialize, Serialize};
+use std::env;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct RegistrationRequest {
@@ -42,9 +46,8 @@ struct Claims {
 
 pub async fn register(
     State(state): State<AppState>,
-    Json(payload): Json<RegistrationRequest>
+    Json(payload): Json<RegistrationRequest>,
 ) -> impl IntoResponse {
-
     if payload.email.trim().is_empty() || payload.password.len() < 8 {
         return (StatusCode::BAD_REQUEST, "invalid payload").into_response();
     }
@@ -52,7 +55,10 @@ pub async fn register(
     let salt = SaltString::generate(&mut OsRng);
     let argon = Argon2::default();
 
-    let password_hash = argon.hash_password(payload.password.as_bytes(), &salt).unwrap().to_string();
+    let password_hash = argon
+        .hash_password(payload.password.as_bytes(), &salt)
+        .unwrap()
+        .to_string();
     let user_id = Uuid::new_v4();
 
     let res = sqlx::query!(
@@ -60,13 +66,22 @@ pub async fn register(
         INSERT INTO users (id, email, password_hash)
         VALUES ($1,$2,$3)
         "#,
-        user_id, payload.email, password_hash
+        user_id,
+        payload.email,
+        password_hash
     )
     .execute(&state.db)
     .await;
 
     match res {
-        Ok(_) => (StatusCode::CREATED, Json(RegisterResponse { id: user_id, email: payload.email})).into_response(),
+        Ok(_) => (
+            StatusCode::CREATED,
+            Json(RegisterResponse {
+                id: user_id,
+                email: payload.email,
+            }),
+        )
+            .into_response(),
         Err(e) => {
             eprintln!("DB insert error: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "could not create user").into_response()
@@ -98,7 +113,9 @@ pub async fn login(
 
     let parsed_hash = PasswordHash::new(&row.password_hash).unwrap();
     let argon = Argon2::default();
-    let verify = argon.verify_password(payload.password.as_bytes(), &parsed_hash).is_ok();
+    let verify = argon
+        .verify_password(payload.password.as_bytes(), &parsed_hash)
+        .is_ok();
 
     if !verify {
         return (StatusCode::UNAUTHORIZED, "Invalid credentials").into_response();
@@ -114,14 +131,18 @@ pub async fn login(
         iat: now.timestamp() as usize,
     };
 
-    let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_bytes()))
-        .map_err(|e| {
-            eprintln!("jwt encode error: {}",e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "token error")
-        });
-    
+    let token = encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes()),
+    )
+    .map_err(|e| {
+        eprintln!("jwt encode error: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, "token error")
+    });
+
     match token {
-        Ok(t) => (StatusCode::OK, Json(LoginResponse {token: t })).into_response(),
+        Ok(t) => (StatusCode::OK, Json(LoginResponse { token: t })).into_response(),
         Err(err_resp) => err_resp.into_response(),
     }
 }

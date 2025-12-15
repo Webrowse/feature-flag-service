@@ -1,17 +1,16 @@
 use axum::{
+    extract::{FromRequestParts, Request},
+    http::request::Parts,
     http::StatusCode,
     middleware::Next,
-    response::{Response, IntoResponse},
-    extract::{ Request, FromRequestParts},
-    http::request::Parts,
+    response::{IntoResponse, Response},
 };
-use jsonwebtoken::{DecodingKey, Validation, decode};
+use jsonwebtoken::{decode, DecodingKey, Validation};
+use serde::Deserialize;
 use std::env;
 use uuid::Uuid;
-use serde::Deserialize;
 
 pub struct JwtUser(pub Uuid);
-
 
 impl<S> FromRequestParts<S> for JwtUser
 where
@@ -38,7 +37,10 @@ struct Claims {
 }
 
 pub async fn require_auth(mut req: Request, next: Next) -> Result<Response, impl IntoResponse> {
-    let auth_header = req.headers().get("authorization").and_then(|v| v.to_str().ok());
+    let auth_header = req
+        .headers()
+        .get("authorization")
+        .and_then(|v| v.to_str().ok());
 
     let token = match auth_header {
         Some(h) if h.starts_with("Bearer ") => &h[7..],
@@ -49,7 +51,7 @@ pub async fn require_auth(mut req: Request, next: Next) -> Result<Response, impl
 
     let secret = env::var("JWT_SECRET").expect("JWT is not found");
 
-    let token_data =  match decode::<Claims>(
+    let token_data = match decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),
         &Validation::default(),
@@ -66,9 +68,6 @@ pub async fn require_auth(mut req: Request, next: Next) -> Result<Response, impl
             req.extensions_mut().insert(user_id);
             Ok(next.run(req).await)
         }
-        Err(_) => {
-            Err((StatusCode::UNAUTHORIZED, "invalid subject"))
-        }
+        Err(_) => Err((StatusCode::UNAUTHORIZED, "invalid subject")),
     }
 }
-

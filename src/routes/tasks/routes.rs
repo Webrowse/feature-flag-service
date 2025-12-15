@@ -1,9 +1,14 @@
-use axum::{Json, extract::{State, Path}, http::StatusCode, response::IntoResponse};
-use uuid::Uuid;
-use crate::state::AppState;
-use crate::routes::middleware_auth::JwtUser;
 use super::dto::{CreateTask, UpdateTask};
 use super::queries;
+use crate::routes::middleware_auth::JwtUser;
+use crate::state::AppState;
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    Json,
+};
+use uuid::Uuid;
 
 pub async fn create(
     State(state): State<AppState>,
@@ -19,10 +24,7 @@ pub async fn create(
     }
 }
 
-pub async fn list(
-    State(state): State<AppState>,
-    JwtUser(user_id): JwtUser,
-) -> impl IntoResponse {
+pub async fn list(State(state): State<AppState>, JwtUser(user_id): JwtUser) -> impl IntoResponse {
     match queries::list_tasks(&state.db, user_id).await {
         Ok(tasks) => (StatusCode::OK, Json(tasks)).into_response(),
         Err(e) => {
@@ -53,10 +55,7 @@ pub async fn delete(
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
     match queries::delete_task(&state.db, user_id, id).await {
-        Ok(_) => (
-            StatusCode::OK,
-            Json(serde_json::json!({"deleted": true}))
-        ).into_response(),
+        Ok(_) => (StatusCode::OK, Json(serde_json::json!({"deleted": true}))).into_response(),
         Err(e) => {
             eprintln!("Error deleting task: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete task").into_response()
