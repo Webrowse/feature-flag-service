@@ -284,4 +284,82 @@ pub async fn update(
         updated_at: flag.updated_at,
     };
     
+    Ok(Json(response))
+}
+
+// Delete a feature flag
+pub async fn delete (
+    State(state): State<AppState>,
+    JwtUser(user_id): JwtUser,
+    Path((project_id, flag_id)): Path<(Uuid, Uuid)>,
+
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let result = sqlx::query(
+        r#"
+        DELETE FROM feature_flags
+        WHERE id = $1 AND project_id = $2
+        AND EXISTS(SELECT 1 FROM projects WHERE id = $2 AND created_by = $3)
+        "#,
+    )
+    .bind(flag_id)
+    .bind(project_id)
+    .bind(user_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e|{
+        eprintln!("Failed to delete flag: {:?}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete flag".to_string())
+    })?;
+
+    if result.rows_affected() = 0 {
+        return Err((StatusCode::NOT_FOUND, "Flag not found".to_string()));
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// Toggle a flag's enabled state 
+pub async fn toggle(
+    State(state): State<AppState>,
+    JwtUser(user_id): JwtUser,
+    Path((project_id, flag_id)): Path<(Uuid, Uuid)>,
+
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let flag = sqlx::query_as::<_,FeatureFlag>(
+        r#"
+        UPDATE feature_flags f
+        SET enabled = NOT enabled, updated_at = NOW()
+        FROM projects p
+        WHERE f.id = $1 AND f.project_id = $2 AND p.id = $2 AND p.created_by = $3
+        RETURNING f.*
+        "#,
+    )
+    .bind(flag_id)
+    .bind(project_id)
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await
+    .map(|e|{
+        eprintln!("Failed to toggle flag: {:?}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, "Failed to toggle flag".to_string())
+    })?;
+
+    match flag {
+        Some(f) => {
+            let response = FlagResponse {
+                id: f.id,
+                project_id: f.project_id,
+                name: f.name,
+                key: f.key,
+                description: f.description,
+                enabled: f.enabled,
+                rollout_percentage:f.rollout_percentage,
+                created_by: f.created_by,
+                update_at: f.update_at,
+
+            };
+            Ok(Json(response))
+        }
+        None => Err((StatusCode::NOT_FOUND, "Flag not found".to_string())),
+    }
 }
