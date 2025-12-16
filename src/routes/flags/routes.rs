@@ -219,5 +219,69 @@ pub async fn update(
         return Err((StatusCode::NOT_FOUND, "Flag not found".to_string()));
     }
 
+    // dynamic update library
+    let mut query = String::from("UPDATE feature_flag SET updated_at = NOW()");
+    let mut bind_count = 1;
 
+    if payload.name.is_some() {
+        query.push_str(&format!(", name = ${}", bind_count));
+        bind_count += 1;
+    }
+
+    if payload.description.is_some() {
+        query.push_str(&format!(", description = ${}", bind_count));
+        bind_count += 1;
+    }
+
+    if payload.enabled.is_some() {
+        query.push_str(&format!(", enabled = ${}", bind_count));
+        bind_count += 1;
+    }
+
+    if payload.rollout_percentage.is_some() {
+        query.push_str(&format!(", rollout_percentage = ${}", bind_count));
+        bind_count += 1;
+    }
+
+    query.push_str(&format!(" WHERE id = ${} RETURNING *", bind_count));
+
+    let mut query_builder = sqlx::query_as::<_, FeatureFlag>(&query);
+
+    if let Some(name) = payload.name {
+        query_builder = query_builder.bind(name);
+    }
+
+    if let Some(description) = payload.description {
+        query_builder = query_builder.bind(description);
+    }
+
+    if let Some(enabled) = payload.enabled {
+        query_builder = query_builder.bind(enabled);
+    }
+
+    if let Some(rollout_percentage) = payload.rollout_percentage {
+        query_builder = query_builder.bind(rollout_percentage);
+    }
+
+    let flag = query_builder
+        .bind(flag_id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(|e| {
+            eprintln!("Failed to update flag: {:?}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to update flag".to_string())
+        })?;
+
+    let response = FlagResponse {
+        id: flag.id,
+        project_id: flag.project_id,
+        name: flag.name,
+        key: flag.key,
+        description: flag.description,
+        enabled: flag.enabled,
+        rollout_percentage: flag.rollout_percentage,
+        created_at: flag.created_at,
+        updated_at: flag.updated_at,
+    };
+    
 }
