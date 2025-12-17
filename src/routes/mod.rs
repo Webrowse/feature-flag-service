@@ -10,6 +10,7 @@ mod health;
 mod middleware_auth;
 mod projects;
 mod tasks;
+mod flags;
 
 pub use auth::register;
 pub use health::health;
@@ -41,6 +42,10 @@ pub fn routes() -> Router<AppState> {
             post(projects::routes::regenerate_key),
         );
 
+    let flag_router = Router::new()
+        .route("/", post(flags::routes::create).get(flags::routes::list))
+        .route("/{flag_id}/toggle", post(flags::routes::toggle));
+    
     Router::new()
         .route("/", get(root))
         .route("/health", get(health))
