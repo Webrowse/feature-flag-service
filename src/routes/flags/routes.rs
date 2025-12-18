@@ -7,7 +7,7 @@ use axum::{
 
 use uuid::Uuid;
 
-use crate::routes::middleware_auth::JwtUser;
+use crate::routes::{flags::validate_flag_key, middleware_auth::JwtUser};
 use crate::state::AppState;
 use super::{
     CreateFlagRequest, UpdateFlagRequest, FeatureFlag, FlagResponse,
@@ -25,10 +25,13 @@ pub async fn create(
     Json(payload): Json<CreateFlagRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
 
+    // validate flag key
+    validate_flag_key(&payload.key).map_err(|e|(StatusCode::BAD_REQUEST, e))?;
     // Checking if the rollout percentage is provided
     if let Some(percentage) = payload.rollout_percentage {
         validate_rollout_percentage(percentage).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
     }
+
 
     // checking if project exists and owned by the user
     let project_exist = sqlx::query_scalar::<_, bool>(
