@@ -44,8 +44,13 @@ pub fn routes() -> Router<AppState> {
 
     let flag_router = Router::new()
         .route("/", post(flags::routes::create).get(flags::routes::list))
-        .route("/{flag_id}/toggle", post(flags::routes::toggle));
-    
+        .route("/{flag_id}", 
+            get(flags::routes::get)
+            .put(flags::routes::update)
+            .delete(flags::routes::delete)
+        )
+            .route("/{flag_id}/toggle", post(flags::routes::toggle));
+
     Router::new()
         .route("/", get(root))
         .route("/health", get(health))
@@ -57,6 +62,7 @@ pub fn routes() -> Router<AppState> {
                 .route("/me", get(me_handler))
                 .nest("/task", task_router)
                 .nest("/projects", projects_router)
+                .nest("/projects/{project_id}/flags", flag_router)
                 .layer(middleware::from_fn(middleware_auth::require_auth)),
         )
 }

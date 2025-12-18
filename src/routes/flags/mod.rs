@@ -54,19 +54,19 @@ pub struct FlagResponse {
 // Validating the flag key
 pub fn validate_flag_key(key: &str) -> Result<(), String> {
     if key.is_empty() {                                         // Checks if flag key is empty
-        return Err("Flag key cannot be empty".to_string);
+        return Err("Flag key cannot be empty".to_string());
     }
 
-    if key.len() {
-        return Err("Flag key is too long (Max: 64 characters)".to_string);      // Max size of flag
+    if key.len()>64 {
+        return Err("Flag key is too long (Max: 64 characters)".to_string());      // Max size of flag
     }
 
     if !key.chars().next().unwrap().is_ascii_alphabetic() {
-        return Err("Flag must start with an alphabet".to_string);
+        return Err("Flag must start with an alphabet".to_string());
     }
 
     if !key.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-') {
-        return Err("flag can only be \n - lowercase letters\n - numbers\n - underscores\n - and hypens.".to_string);
+        return Err("flag can only be \n - lowercase letters\n - numbers\n - underscores\n - and hypens.".to_string());
     }
 
     Ok(())
@@ -75,7 +75,7 @@ pub fn validate_flag_key(key: &str) -> Result<(), String> {
 // Checks if percentage number is between the number 0 to 100
 pub fn validate_rollout_percentage(percentage: i32) -> Result<(), String> {
     if !(0..100).contains(&percentage) {
-        return Err("Roolout percentage must be between 0 to 100");
+        return Err("Roolout percentage must be between 0 to 100".to_string());
     }
 
     Ok(())

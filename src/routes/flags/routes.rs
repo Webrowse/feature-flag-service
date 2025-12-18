@@ -11,7 +11,7 @@ use crate::routes::middleware_auth::JwtUser;
 use crate::state::AppState;
 use super::{
     CreateFlagRequest, UpdateFlagRequest, FeatureFlag, FlagResponse,
-    validate_flag_key, validate_rollout_percentage
+    validate_rollout_percentage
 };
 
 // Handles
@@ -46,7 +46,7 @@ pub async fn create(
         }
 
         //create the flag
-        let flag = sqlx::query_as::<_, FeatureFlag> (
+        let flag = match sqlx::query_as::<_, FeatureFlag> (
             r#"
             INSERT INTO feature_flags (project_id, name, key, description, enabled, rollout_percentage)
             VALUES ($1, $2, $3, $4, $5, $6)
@@ -60,17 +60,18 @@ pub async fn create(
         .bind(payload.enabled.unwrap_or(false))
         .bind(payload.rollout_percentage.unwrap_or(0))
         .fetch_one(&state.db)
-        .await.map(|e| {
-            eprintln!("Failed to create a flag: {:?}", e);
-
-            if let Some(db_error) = e.as_database_error(){
-                if db_err.is_unique_violation() {
-                    return (StatusCode::CONFLICT, "Flag key already exists in this project".to_string());
+        .await
+        {
+            Ok(flag) => flag,
+            Err(e) => {
+                if let Some(db_error) = e.as_database_error() {
+                    if db_error.code() == Some(std::borrow::Cow::Borrowed("23505")) {
+                        return Err((StatusCode::CONFLICT, "Flag key already exists".to_string()));
+                    }
                 }
+                return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)));
             }
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e))
-        }
-    )?;
+        };
 
     let response = FlagResponse {
         id: flag.id,
@@ -80,7 +81,7 @@ pub async fn create(
         description: flag.description,
         enabled: flag.enabled,
         rollout_percentage: flag.rollout_percentage,
-        created_at: flag.created_by,
+        created_at: flag.created_at,
         updated_at: flag.updated_at,
     };
 
@@ -147,7 +148,7 @@ pub async fn get(
 
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // fetch flag and verify ownership of project
-    let flag = sqlx::query_as::<_, bool> (
+    let flag = sqlx::query_as::<_, FeatureFlag> (
         r#"
         SELECT f.* FROM feature_flags f
         JOIN projects p ON f.project_id = p.id
@@ -191,7 +192,7 @@ pub async fn update(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     //validate rollout percentage
     if let Some(percentage) = payload.rollout_percentage {
-        validate-validate_rollout_percentage(percentage)
+        validate_rollout_percentage(percentage)
             .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
     }
 
@@ -311,7 +312,7 @@ pub async fn delete (
         (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete flag".to_string())
     })?;
 
-    if result.rows_affected() = 0 {
+    if result.rows_affected() == 0 {
         return Err((StatusCode::NOT_FOUND, "Flag not found".to_string()));
     }
 
@@ -339,7 +340,7 @@ pub async fn toggle(
     .bind(user_id)
     .fetch_optional(&state.db)
     .await
-    .map(|e|{
+    .map_err(|e|{
         eprintln!("Failed to toggle flag: {:?}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, "Failed to toggle flag".to_string())
     })?;
@@ -354,12 +355,12 @@ pub async fn toggle(
                 description: f.description,
                 enabled: f.enabled,
                 rollout_percentage:f.rollout_percentage,
-                created_by: f.created_by,
-                update_at: f.update_at,
+                created_at: f.created_at,
+                updated_at: f.updated_at,
 
             };
             Ok(Json(response))
-        }
+        },
         None => Err((StatusCode::NOT_FOUND, "Flag not found".to_string())),
     }
 }
