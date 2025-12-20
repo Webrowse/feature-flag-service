@@ -11,6 +11,7 @@ mod middleware_auth;
 mod projects;
 mod tasks;
 mod flags;
+mod rules;
 
 pub use auth::register;
 pub use health::health;
@@ -51,6 +52,15 @@ pub fn routes() -> Router<AppState> {
         )
             .route("/{flag_id}/toggle", post(flags::routes::toggle));
 
+    let rules_router = Router::new()
+        .route("/", post(rules::routes::create).get(rules::routes::list))
+        .route(
+            "/{rule_id}",
+            get(rules::routes::get)
+                .put(rules::routes::update)
+                .delete(rules::routes::delete),
+        );
+
     Router::new()
         .route("/", get(root))
         .route("/health", get(health))
@@ -63,6 +73,7 @@ pub fn routes() -> Router<AppState> {
                 .nest("/task", task_router)
                 .nest("/projects", projects_router)
                 .nest("/projects/{project_id}/flags", flag_router)
+                .nest("projects/{project_id}/flags/{flag_id}/rules", rules_router)
                 .layer(middleware::from_fn(middleware_auth::require_auth)),
         )
 }

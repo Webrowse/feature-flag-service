@@ -31,3 +31,4 @@ Thumbs.db
 # Bash testing scripts
 test_project.sh
 test_flags.sh
+test_rules.sh

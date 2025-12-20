@@ -53,7 +53,7 @@ pub async fn create(
             r#"
             INSERT INTO feature_flags (project_id, name, key, description, enabled, rollout_percentage)
             VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING *
+            RETURNING id, project_id, name, key, description, enabled, rollout_percentage, created_at, updated_at
             "#,
         )
         .bind(project_id)
@@ -98,7 +98,7 @@ pub async fn list(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
 
     let project_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM project WHERE id = $1 AND created_by = $2)"
+        "SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1 AND created_by = $2)"
     )
     .bind(project_id)
     .bind(user_id)
@@ -114,7 +114,8 @@ pub async fn list(
 
     let flags = sqlx::query_as::<_, FeatureFlag>(
         r#"
-        SELECT * FROM feature_flags
+        SELECT id, project_id, name, key, description, enabled, rollout_percentage, created_at, updated_at
+        FROM feature_flags
         WHERE project_id = $1
         ORDER BY created_at DESC
         "#,
@@ -147,18 +148,19 @@ pub async fn list(
 pub async fn get(
     State(state): State<AppState>,
     JwtUser(user_id): JwtUser,
-    Path((project_id, flag_ig)): Path<(Uuid, Uuid)>,
+    Path((project_id, flag_id)): Path<(Uuid, Uuid)>,
 
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // fetch flag and verify ownership of project
     let flag = sqlx::query_as::<_, FeatureFlag> (
         r#"
-        SELECT f.* FROM feature_flags f
+        SELECT f.id, f.project_id, f.name, f.key, f.description, f.enabled, f.rollout_percentage, f.created_at, f.updated_at
+        FROM feature_flags f
         JOIN projects p ON f.project_id = p.id
         WHERE f.id =$1 AND f.project_id = $2 AND p.created_by = $3
         "#,
     )
-    .bind(flag_ig)
+    .bind(flag_id)
     .bind(project_id)
     .bind(user_id)
     .fetch_optional(&state.db)
@@ -224,58 +226,83 @@ pub async fn update(
     }
 
     // dynamic update library
-    let mut query = String::from("UPDATE feature_flag SET updated_at = NOW()");
-    let mut bind_count = 1;
+    // let mut query = String::from("UPDATE feature_flags SET updated_at = NOW()");
+    // let mut bind_count = 1;
 
-    if payload.name.is_some() {
-        query.push_str(&format!(", name = ${}", bind_count));
-        bind_count += 1;
-    }
+    // if payload.name.is_some() {
+    //     query.push_str(&format!(", name = ${}", bind_count));
+    //     bind_count += 1;
+    // }
 
-    if payload.description.is_some() {
-        query.push_str(&format!(", description = ${}", bind_count));
-        bind_count += 1;
-    }
+    // if payload.description.is_some() {
+    //     query.push_str(&format!(", description = ${}", bind_count));
+    //     bind_count += 1;
+    // }
 
-    if payload.enabled.is_some() {
-        query.push_str(&format!(", enabled = ${}", bind_count));
-        bind_count += 1;
-    }
+    // if payload.enabled.is_some() {
+    //     query.push_str(&format!(", enabled = ${}", bind_count));
+    //     bind_count += 1;
+    // }
 
-    if payload.rollout_percentage.is_some() {
-        query.push_str(&format!(", rollout_percentage = ${}", bind_count));
-        bind_count += 1;
-    }
+    // if payload.rollout_percentage.is_some() {
+    //     query.push_str(&format!(", rollout_percentage = ${}", bind_count));
+    //     bind_count += 1;
+    // }
 
-    query.push_str(&format!(" WHERE id = ${} RETURNING *", bind_count));
+    // query.push_str(&format!(" WHERE id = ${} RETURNING *", bind_count));
 
-    let mut query_builder = sqlx::query_as::<_, FeatureFlag>(&query);
+    // let mut query_builder = sqlx::query_as::<_, FeatureFlag>(&query);
 
-    if let Some(name) = payload.name {
-        query_builder = query_builder.bind(name);
-    }
+    // if let Some(name) = payload.name {
+    //     query_builder = query_builder.bind(name);
+    // }
 
-    if let Some(description) = payload.description {
-        query_builder = query_builder.bind(description);
-    }
+    // if let Some(description) = payload.description {
+    //     query_builder = query_builder.bind(description);
+    // }
 
-    if let Some(enabled) = payload.enabled {
-        query_builder = query_builder.bind(enabled);
-    }
+    // if let Some(enabled) = payload.enabled {
+    //     query_builder = query_builder.bind(enabled);
+    // }
 
-    if let Some(rollout_percentage) = payload.rollout_percentage {
-        query_builder = query_builder.bind(rollout_percentage);
-    }
+    // if let Some(rollout_percentage) = payload.rollout_percentage {
+    //     query_builder = query_builder.bind(rollout_percentage);
+    // }
 
-    let flag = query_builder
-        .bind(flag_id)
-        .fetch_one(&state.db)
-        .await
-        .map_err(|e| {
-            eprintln!("Failed to update flag: {:?}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to update flag".to_string())
-        })?;
+    // let flag = query_builder
+    //     .bind(flag_id)
+    //     .fetch_one(&state.db)
+    //     .await
+    //     .map_err(|e| {
+    //         eprintln!("Failed to update flag: {:?}", e);
+    //         (StatusCode::INTERNAL_SERVER_ERROR, "Failed to update flag".to_string())
+    //     })?;
 
+
+    let flag = sqlx::query_as::<_, FeatureFlag>(
+        r#"
+            UPDATE feature_flags
+            SET
+                name = COALESCE($2, name),
+                description = COALESCE($3, description),
+                enabled = COALESCE($4, enabled),
+                rollout_percentage = COALESCE($5, rollout_percentage),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING id, project_id, name, key, description, enabled, rollout_percentage, created_at, updated_at
+        "#
+    )
+    .bind(flag_id)
+    .bind(payload.name.as_deref())
+    .bind(payload.description.as_deref())
+    .bind(payload.enabled)
+    .bind(payload.rollout_percentage)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| {
+        eprintln!("Failed to update flag: {:?}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, "Failed to update flag".to_string())
+    })?;
     let response = FlagResponse {
         id: flag.id,
         project_id: flag.project_id,

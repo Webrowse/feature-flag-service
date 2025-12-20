@@ -74,9 +74,42 @@ pub fn validate_flag_key(key: &str) -> Result<(), String> {
 
 // Checks if percentage number is between the number 0 to 100
 pub fn validate_rollout_percentage(percentage: i32) -> Result<(), String> {
-    if !(0..100).contains(&percentage) {
+    if !(0..=100).contains(&percentage) {
         return Err("Roolout percentage must be between 0 to 100".to_string());
     }
 
     Ok(())
+}
+
+
+
+
+// tests
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_flag_key() {
+        assert!(validate_flag_key("new_checkout").is_ok());
+        assert!(validate_flag_key("dark-mode").is_ok());
+        assert!(validate_flag_key("beta_features_2024").is_ok());
+        
+        assert!(validate_flag_key("").is_err());
+        assert!(validate_flag_key("New_Checkout").is_err()); // uppercase
+        assert!(validate_flag_key("_invalid").is_err()); // starts with underscore
+        assert!(validate_flag_key("has space").is_err()); // space
+        assert!(validate_flag_key("has.dot").is_err()); // dot
+    }
+
+    #[test]
+    fn test_validate_rollout_percentage() {
+        assert!(validate_rollout_percentage(0).is_ok());
+        assert!(validate_rollout_percentage(50).is_ok());
+        assert!(validate_rollout_percentage(100).is_ok());
+        
+        assert!(validate_rollout_percentage(-1).is_err());
+        assert!(validate_rollout_percentage(101).is_err());
+    }
 }
