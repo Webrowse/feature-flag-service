@@ -43,15 +43,7 @@ pub fn routes() -> Router<AppState> {
             post(projects::routes::regenerate_key),
         );
 
-    let flag_router = Router::new()
-        .route("/", post(flags::routes::create).get(flags::routes::list))
-        .route("/{flag_id}", 
-            get(flags::routes::get)
-            .put(flags::routes::update)
-            .delete(flags::routes::delete)
-        )
-            .route("/{flag_id}/toggle", post(flags::routes::toggle));
-
+    // Rules router - handles /rules and /rules/{rule_id}
     let rules_router = Router::new()
         .route("/", post(rules::routes::create).get(rules::routes::list))
         .route(
@@ -60,6 +52,18 @@ pub fn routes() -> Router<AppState> {
                 .put(rules::routes::update)
                 .delete(rules::routes::delete),
         );
+
+    // Flags router - handles flags AND nests rules under /{flag_id}/rules
+    let flags_router = Router::new()
+        .route("/", post(flags::routes::create).get(flags::routes::list))
+        .route(
+            "/{flag_id}",
+            get(flags::routes::get)
+                .put(flags::routes::update)
+                .delete(flags::routes::delete),
+        )
+        .route("/{flag_id}/toggle", post(flags::routes::toggle))
+        .nest("/{flag_id}/rules", rules_router);  
 
     Router::new()
         .route("/", get(root))
@@ -72,8 +76,7 @@ pub fn routes() -> Router<AppState> {
                 .route("/me", get(me_handler))
                 .nest("/task", task_router)
                 .nest("/projects", projects_router)
-                .nest("/projects/{project_id}/flags", flag_router)
-                .nest("projects/{project_id}/flags/{flag_id}/rules", rules_router)
+                .nest("/projects/{project_id}/flags", flags_router)  
                 .layer(middleware::from_fn(middleware_auth::require_auth)),
         )
 }
