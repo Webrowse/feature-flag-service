@@ -1,11 +1,33 @@
 # Feature Flag Service - API Reference
 
+## Overview
+
+This is a Rust-based feature flag management service built with Axum and PostgreSQL. It provides a complete REST API for managing feature flags with sophisticated targeting rules.
+
+**Tech Stack:**
+- Axum 0.8.7 (Web Framework)
+- PostgreSQL 16 (Database)
+- SQLx 0.8.6 (Database Driver)
+- JWT Authentication
+- Argon2 Password Hashing
+
+**Base URL:** `http://localhost:3000`
+
 ## Authentication
+
 All `/api/*` endpoints require JWT authentication via the `Authorization: Bearer {token}` header.
 
 ## Endpoints
 
-### Authentication
+### Health Check
+
+#### Check Service Health
+```
+GET /health
+Response: "OK"
+```
+
+### Authentication (Public)
 
 #### Register
 ```
@@ -19,6 +41,14 @@ Response: { "id": "uuid", "email": "user@example.com" }
 POST /auth/login
 Body: { "email": "user@example.com", "password": "password123" }
 Response: { "token": "jwt_token_here" }
+```
+
+### Current User
+
+#### Get Current User
+```
+GET /api/me
+Response: { "user_id": "uuid" }
 ```
 
 ---
@@ -149,6 +179,75 @@ Response: 204 No Content
 
 ---
 
+### Flag Rules (Targeting)
+
+Target specific users or groups with advanced flag rules. Rules are evaluated for each flag to determine if it should be enabled for a specific user.
+
+#### Create Rule
+```
+POST /api/projects/{project_id}/flags/{flag_id}/rules
+Body: {
+  "rule_type": "user_email",           // user_id, user_email, or email_domain
+  "rule_value": "admin@example.com",   // The value to match
+  "enabled": true,                     // optional, default: true
+  "priority": 10                       // optional, default: 0, higher = evaluated first
+}
+Response: {
+  "id": "uuid",
+  "flag_id": "uuid",
+  "rule_type": "user_email",
+  "rule_value": "admin@example.com",
+  "enabled": true,
+  "priority": 10,
+  "created_at": "2024-12-14T10:00:00Z"
+}
+```
+
+**Rule Types:**
+- `user_id` - Match specific user identifier
+- `user_email` - Match specific email address (must contain @)
+- `email_domain` - Match email domain (must start with @, e.g., "@company.com")
+
+**Validation Rules:**
+- `rule_value` cannot be empty
+- Email domains must start with @
+- User emails must contain @
+- `priority` determines evaluation order (higher values evaluated first)
+
+#### List Rules
+```
+GET /api/projects/{project_id}/flags/{flag_id}/rules
+Response: [ {...rule}, {...rule} ]
+Note: Rules are returned ordered by priority (highest first)
+```
+
+#### Get Rule
+```
+GET /api/projects/{project_id}/flags/{flag_id}/rules/{rule_id}
+Response: {...rule}
+```
+
+#### Update Rule
+```
+PUT /api/projects/{project_id}/flags/{flag_id}/rules/{rule_id}
+Body: {
+  "rule_type": "email_domain",
+  "rule_value": "@newcompany.com",
+  "enabled": false,
+  "priority": 20
+}
+Note: All fields are optional, only provided fields are updated
+Response: {...rule}
+```
+
+#### Delete Rule
+```
+DELETE /api/projects/{project_id}/flags/{flag_id}/rules/{rule_id}
+Response: 204 No Content
+```
+
+---
+
 ## Error Responses
 
 All error responses follow this format:
@@ -166,22 +265,56 @@ Common status codes:
 
 ---
 
-## Testing
+## Database Schema
 
-Run the test scripts to verify everything works:
+**Tables:**
+- `users` - User authentication
+- `projects` - Feature flag projects/applications
+- `feature_flags` - Feature flags with rollout percentages
+- `flag_rules` - Targeting rules for flags
+- `flag_evaluations` - Analytics/history (table exists, API pending)
+- `tasks` - Legacy task management (from template)
 
+**Key Constraints:**
+- Project SDK keys are globally unique
+- Flag keys must be unique within a project
+- All data is user-scoped (users can only access their own projects)
+
+---
+
+## Security Features
+
+- **JWT Authentication** - 24-hour token validity
+- **Argon2 Password Hashing** - Memory-hard algorithm
+- **User Ownership Verification** - Users can only access their own projects
+- **SQL Injection Protection** - Compile-time verified queries via SQLx
+- **CORS Support** - Configurable via Tower middleware
+
+---
+
+## Configuration
+
+**Environment Variables (.env):**
+```
+PORT=3000
+DATABASE_URL=postgres://admin:admin@localhost:5432/axum_starter
+JWT_SECRET=thisIsASecretShhhhh
+```
+
+**Database:** PostgreSQL 16 via Docker Compose
+
+**Start Service:**
 ```bash
-# Test projects
-chmod +x test_project.sh
-./test_project.sh
-
-# Test feature flags
-chmod +x test_flags.sh
-./test_flags.sh
+docker-compose up -d    # Start PostgreSQL
+cargo run               # Start API server
 ```
 
 ---
 
-## Next Steps: SDK Evaluation Endpoint
+## Next Steps
 
-Coming soon: Public endpoint for client SDKs to evaluate flags based on user context.
+**Coming Soon:**
+- SDK Evaluation Endpoint - Public endpoint for client SDKs to evaluate flags based on user context
+- Analytics Dashboard - Utilize `flag_evaluations` table for usage metrics
+- Webhooks - Notify external services when flags change
+- Audit Logs - Track who changed what and when
