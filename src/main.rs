@@ -1,8 +1,10 @@
 mod config;
 mod routes;
 mod state;
+mod evaluation;
 
 use sqlx::PgPool;
+use tower_http::cors::CorsLayer;
 
 #[tokio::main]
 async fn main() {
@@ -12,9 +14,11 @@ async fn main() {
         .await
         .expect("Error connecting DB");
 
-    let state = state::AppState { db };
+    let state = state::AppState { db: db.clone() };
 
-    let app = routes::routes().with_state(state);
+    let app = routes::routes().with_state(state)
+        .layer(axum::Extension(db))
+        .layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind(config.addr()).await.unwrap();
 
