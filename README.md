@@ -31,29 +31,29 @@ This service provides two main interfaces:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Feature Flag Service                    │
+│                  Feature Flag Service                   │
 ├─────────────────────────────────────────────────────────┤
-│                                                           │
-│  Management API          SDK API                         │
-│  (JWT Auth)              (SDK Key Auth)                  │
-│  ├── Projects            ├── Evaluate Flags              │
-│  ├── Flags               └── (Public Endpoint)           │
-│  ├── Rules                                               │
-│  └── Users                                               │
-│                                                           │
+│                                                         │
+│  Management API          SDK API                        │
+│  (JWT Auth)              (SDK Key Auth)                 │
+│  ├── Projects            ├── Evaluate Flags             │
+│  ├── Flags               └── (Public Endpoint)          │
+│  ├── Rules                                              │
+│  └── Users                                              │
+│                                                         │
 │  ┌───────────────────────────────────────────┐          │
-│  │      Evaluation Engine                     │          │
+│  │      Evaluation Engine                    │          │
 │  │  • Rule Matching (priority-based)         │          │
 │  │  • Percentage Rollout (consistent hash)   │          │
 │  │  • Evaluation Logging                     │          │
 │  └───────────────────────────────────────────┘          │
-│                                                           │
+│                                                         │
 │  ┌───────────────────────────────────────────┐          │
-│  │         PostgreSQL Database                │          │
-│  │  • Users & Projects                        │          │
-│  │  • Feature Flags                           │          │
-│  │  • Targeting Rules                         │          │
-│  │  • Evaluation History                      │          │
+│  │         PostgreSQL Database               │          │
+│  │  • Users & Projects                       │          │
+│  │  • Feature Flags                          │          │
+│  │  • Targeting Rules                        │          │
+│  │  • Evaluation History                     │          │
 │  └───────────────────────────────────────────┘          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -302,7 +302,7 @@ feature-flag-service/
 ├── CONTRIBUTING.md                # Contribution guidelines
 ├── Cargo.toml                     # Rust dependencies
 ├── docker-compose.yml             # PostgreSQL setup
-└── .env                          # Configuration (gitignored)
+└── .env                           # Configuration (gitignored)
 ```
 
 ## API Overview
@@ -437,19 +437,7 @@ See [API.md](./API.md) for detailed documentation with examples.
 ### Running Tests
 
 ```bash
-# Run all unit tests
-cargo test
-
-# Run tests with output
-cargo test -- --nocapture
-
-# Run integration tests (bash scripts)
-./test_project.sh      # Test project CRUD
-./test_flags.sh        # Test flag operations
-./test_rules.sh        # Test targeting rules
-./test_evaluation.sh   # Test complete evaluation flow
-
-# Or use Postman collection for interactive testing
+# Use Postman collection for interactive testing
 # Import postman_collection.json for organized CRUD operations
 ```
 
@@ -470,7 +458,8 @@ cargo check
 
 ```bash
 # Create new migration
-sqlx migrate add <name>
+# Example names: create_users, add_projects_table, add_email_index
+sqlx migrate add create_feature_flags
 
 # Run migrations
 sqlx migrate run
@@ -492,19 +481,12 @@ PORT=3000
 # Database
 DATABASE_URL=postgresql://user:password@host:5432/dbname
 
-# Security (CHANGE THIS!)
+# Security
 JWT_SECRET=your_super_secure_random_secret_at_least_32_characters_long
 
 # Optional
 RUST_LOG=info
 ```
-
-**Security Checklist:**
-- [ ] Change `JWT_SECRET` to a cryptographically random string (32+ chars)
-- [ ] Use strong database credentials
-- [ ] Enable SSL for database connections in production
-- [ ] Configure CORS appropriately for your domain
-- [ ] Set up proper firewall rules
 
 ### Build for Production
 
@@ -661,22 +643,6 @@ if (await client.isEnabled('dark_mode', 'user_123', 'user@example.com')) {
 - Flag evaluation: < 10ms (including DB query)
 - Rule matching: O(n) where n = number of rules per flag
 - Scales to millions of evaluations/day on modest hardware
-
-## Roadmap
-
-Potential enhancements:
-
-- [ ] Flag version history and rollback
-- [ ] A/B test variant support (beyond boolean flags)
-- [ ] Real-time flag updates via WebSocket
-- [ ] Analytics dashboard (evaluation metrics, user segments)
-- [ ] Flag dependency management
-- [ ] Schedule-based flag activation
-- [ ] Custom attribute targeting (e.g., country, device type)
-- [ ] Rate limiting for SDK endpoints
-- [ ] Audit log for flag changes
-- [ ] Import/export flag configurations
-- [ ] Multi-environment support (dev, staging, prod)
 
 ## Contributing
 
