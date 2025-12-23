@@ -1,0 +1,804 @@
+{
+	"info": {
+		"_postman_id": "feature-flag-service-collection",
+		"name": "Feature Flag Service API",
+		"description": "Complete API collection for Feature Flag Service with all CRUD operations",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{jwt_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:3000",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "project_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "flag_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "rule_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "sdk_key",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    console.log('User registered:', response.email);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"developer@example.com\",\n  \"password\": \"secure123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('jwt_token', response.token);",
+									"    console.log('JWT token saved to collection variable');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"developer@example.com\",\n  \"password\": \"secure123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login and receive JWT token (automatically saved to collection variable)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"me"
+							]
+						},
+						"description": "Get current authenticated user information"
+					},
+					"response": []
+				}
+			],
+			"description": "User authentication endpoints"
+		},
+		{
+			"name": "2. Projects",
+			"item": [
+				{
+					"name": "Create Project",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('project_id', response.id);",
+									"    pm.collectionVariables.set('sdk_key', response.sdk_key);",
+									"    console.log('Project ID:', response.id);",
+									"    console.log('SDK Key:', response.sdk_key);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"My Mobile App\",\n  \"description\": \"iOS and Android app for customers\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects"
+							]
+						},
+						"description": "Create a new project (automatically saves project_id and sdk_key)"
+					},
+					"response": []
+				},
+				{
+					"name": "List Projects",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects"
+							]
+						},
+						"description": "Get all projects for the authenticated user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Project",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}"
+							]
+						},
+						"description": "Get a specific project by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Project",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"My Mobile App (Updated)\",\n  \"description\": \"Updated description for mobile app\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}"
+							]
+						},
+						"description": "Update project details"
+					},
+					"response": []
+				},
+				{
+					"name": "Regenerate SDK Key",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('sdk_key', response.sdk_key);",
+									"    console.log('New SDK Key:', response.sdk_key);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/regenerate-key",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"regenerate-key"
+							]
+						},
+						"description": "Generate a new SDK key for the project (invalidates old key)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Project",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}"
+							]
+						},
+						"description": "Delete a project (cascades to delete all flags and rules)"
+					},
+					"response": []
+				}
+			],
+			"description": "Project management endpoints"
+		},
+		{
+			"name": "3. Feature Flags",
+			"item": [
+				{
+					"name": "Create Flag",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('flag_id', response.id);",
+									"    console.log('Flag ID:', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Dark Mode\",\n  \"key\": \"dark_mode\",\n  \"description\": \"Enable dark mode UI\",\n  \"enabled\": true,\n  \"rollout_percentage\": 50\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags"
+							]
+						},
+						"description": "Create a new feature flag (automatically saves flag_id)"
+					},
+					"response": []
+				},
+				{
+					"name": "List Flags",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags"
+							]
+						},
+						"description": "Get all flags for a project"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Flag",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}"
+							]
+						},
+						"description": "Get a specific flag by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Flag",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Dark Mode (Updated)\",\n  \"description\": \"Updated dark mode feature\",\n  \"enabled\": true,\n  \"rollout_percentage\": 75\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}"
+							]
+						},
+						"description": "Update flag properties (all fields optional)"
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Flag",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}/toggle",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}",
+								"toggle"
+							]
+						},
+						"description": "Toggle the enabled state of a flag (quick on/off switch)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Flag",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}"
+							]
+						},
+						"description": "Delete a flag (cascades to delete all rules)"
+					},
+					"response": []
+				}
+			],
+			"description": "Feature flag management endpoints"
+		},
+		{
+			"name": "4. Targeting Rules",
+			"item": [
+				{
+					"name": "Create Rule - User ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('rule_id', response.id);",
+									"    console.log('Rule ID:', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rule_type\": \"user_id\",\n  \"rule_value\": \"user_12345\",\n  \"enabled\": true,\n  \"priority\": 100\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}/rules",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}",
+								"rules"
+							]
+						},
+						"description": "Create a user ID targeting rule (automatically saves rule_id)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Rule - User Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rule_type\": \"user_email\",\n  \"rule_value\": \"beta@example.com\",\n  \"enabled\": true,\n  \"priority\": 90\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}/rules",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}",
+								"rules"
+							]
+						},
+						"description": "Create a user email targeting rule"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Rule - Email Domain",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rule_type\": \"email_domain\",\n  \"rule_value\": \"@company.com\",\n  \"enabled\": true,\n  \"priority\": 80\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}/rules",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}",
+								"rules"
+							]
+						},
+						"description": "Create an email domain targeting rule (value must start with @)"
+					},
+					"response": []
+				},
+				{
+					"name": "List Rules",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}/rules",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}",
+								"rules"
+							]
+						},
+						"description": "Get all rules for a flag (ordered by priority)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Rule",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}/rules/{{rule_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}",
+								"rules",
+								"{{rule_id}}"
+							]
+						},
+						"description": "Get a specific rule by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Rule",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rule_type\": \"email_domain\",\n  \"rule_value\": \"@newcompany.com\",\n  \"enabled\": true,\n  \"priority\": 95\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}/rules/{{rule_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}",
+								"rules",
+								"{{rule_id}}"
+							]
+						},
+						"description": "Update rule properties (all fields optional)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Rule",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/projects/{{project_id}}/flags/{{flag_id}}/rules/{{rule_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"{{project_id}}",
+								"flags",
+								"{{flag_id}}",
+								"rules",
+								"{{rule_id}}"
+							]
+						},
+						"description": "Delete a targeting rule"
+					},
+					"response": []
+				}
+			],
+			"description": "Targeting rules for feature flags"
+		},
+		{
+			"name": "5. SDK Endpoints",
+			"item": [
+				{
+					"name": "Evaluate Flags",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-SDK-Key",
+								"value": "{{sdk_key}}",
+								"description": "SDK key for authentication"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": \"user_12345\",\n  \"user_email\": \"alice@example.com\",\n  \"custom_attributes\": {}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/sdk/v1/evaluate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sdk",
+								"v1",
+								"evaluate"
+							]
+						},
+						"description": "Evaluate all flags for a user (uses SDK key authentication, not JWT)"
+					},
+					"response": []
+				}
+			],
+			"description": "Public SDK endpoints for client applications"
+		},
+		{
+			"name": "0. Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check if the service is running"
+					},
+					"response": []
+				}
+			],
+			"description": "Service health check"
+		}
+	]
+}
