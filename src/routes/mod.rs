@@ -78,8 +78,14 @@ pub fn routes() -> Router<AppState> {
                 .route("/me", get(me_handler))
                 .nest("/task", task_router)
                 .nest("/projects", projects_router)
-                .nest("/projects/{project_id}/flags", flags_router)  
+                .nest("/projects/{project_id}/flags", flags_router)
                 .layer(middleware::from_fn(middleware_auth::require_auth)),
+        )
+        .nest(
+            "/sdk/v1",
+            Router::new()
+                .route("/evaluate", post(sdk::routes::evaluate))
+                .layer(middleware::from_fn(sdk_auth::require_sdk_key)),
         )
 }
 
