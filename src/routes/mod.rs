@@ -12,6 +12,8 @@ mod projects;
 mod tasks;
 mod flags;
 mod rules;
+mod sdk_auth;  
+mod sdk; 
 
 pub use auth::register;
 pub use health::health;

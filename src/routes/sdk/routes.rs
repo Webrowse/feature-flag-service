@@ -57,8 +57,8 @@ pub async fn evaluate(
         // Convert to evaluation types
         let flag_data = FlagData {
             key: flag.key.clone(),
-            enabled: flag.enabled,
-            rollout_percentage: flag.rollout_percentage,
+            enabled: flag.enabled.expect("enable error"),
+            rollout_percentage: flag.rollout_percentage.expect("rollout error"),
         };
 
         let rule_data: Vec<RuleData> = rules
@@ -66,8 +66,8 @@ pub async fn evaluate(
             .map(|r| RuleData {
                 rule_type: r.rule_type,
                 rule_value: r.rule_value,
-                enabled: r.enabled,
-                priority: r.priority,
+                enabled: r.enabled.expect("enable error"),
+                priority: r.priority.expect("priority error"),
             })
             .collect();
 
@@ -100,7 +100,7 @@ pub async fn evaluate(
         )
         .execute(&state.db)
         .await;
-        // Ignore logging errors - don't fail the request
+
     }
 
     Ok(Json(EvaluateResponse { flags: result_flags }))
