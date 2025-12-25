@@ -19,7 +19,7 @@ Thanks for your interest! This is a learning project and template.
 
 ## Running Tests
 ```bash
-cargo test
+cargo check
 cargo clippy
 cargo fmt
 ```

@@ -1,7 +1,7 @@
 use axum::{
     extract::Request,
     middleware,
-    routing::{get, post, put},
+    routing::{get, post},
     Router,
 };
 
@@ -9,11 +9,11 @@ mod auth;
 mod health;
 mod middleware_auth;
 mod projects;
-mod tasks;
 mod flags;
 mod rules;
-mod sdk_auth;  
-mod sdk; 
+mod sdk_auth;
+mod sdk;
+pub mod environments; 
 
 pub use auth::register;
 pub use health::health;
@@ -22,13 +22,6 @@ use crate::routes::auth::login;
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
-    let task_router = Router::new()
-        .route("/", post(tasks::routes::create).get(tasks::routes::list))
-        .route(
-            "/{id}",
-            put(tasks::routes::update).delete(tasks::routes::delete),
-        );
-
     let projects_router = Router::new()
         .route(
             "/",
@@ -65,7 +58,20 @@ pub fn routes() -> Router<AppState> {
                 .delete(flags::routes::delete),
         )
         .route("/{flag_id}/toggle", post(flags::routes::toggle))
-        .nest("/{flag_id}/rules", rules_router);  
+        .nest("/{flag_id}/rules", rules_router);
+
+    // Environments router - handles /environments and /environments/{environment_id}
+    let environments_router = Router::new()
+        .route(
+            "/",
+            post(environments::routes::create).get(environments::routes::list),
+        )
+        .route(
+            "/{environment_id}",
+            get(environments::routes::get)
+                .put(environments::routes::update)
+                .delete(environments::routes::delete),
+        );  
 
     Router::new()
         .route("/", get(root))
@@ -76,9 +82,9 @@ pub fn routes() -> Router<AppState> {
             "/api",
             Router::new()
                 .route("/me", get(me_handler))
-                .nest("/task", task_router)
                 .nest("/projects", projects_router)
-                .nest("/projects/{project_id}/flags", flags_router)
+                .nest("/projects/{project_id}/environments", environments_router)
+                .nest("/projects/{project_id}/environments/{environment_id}/flags", flags_router)
                 .layer(middleware::from_fn(middleware_auth::require_auth)),
         )
         .nest(

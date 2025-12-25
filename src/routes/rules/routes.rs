@@ -19,28 +19,30 @@ use super::{
 pub async fn create(
     State(state): State<AppState>,
     JwtUser(user_id): JwtUser,
-    Path((project_id, flag_id)): Path<(Uuid, Uuid)>,
+    Path((project_id, environment_id, flag_id)): Path<(Uuid, Uuid, Uuid)>,
     Json(payload): Json<CreateRuleRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // Validate rule type
     validate_rule_type(&payload.rule_type)
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
-    
+
     // Validate rule value
     validate_rule_value(&payload.rule_type, &payload.rule_value)
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
-    
-    // Verify flag exists and user owns the project
+
+    // Verify flag exists, belongs to the environment, and user owns the project
     let flag_exists = sqlx::query_scalar::<_, bool>(
         r#"
         SELECT EXISTS(
             SELECT 1 FROM feature_flags f
-            JOIN projects p ON f.project_id = p.id
-            WHERE f.id = $1 AND f.project_id = $2 AND p.created_by = $3
+            JOIN environments e ON f.environment_id = e.id
+            JOIN projects p ON e.project_id = p.id
+            WHERE f.id = $1 AND f.environment_id = $2 AND e.project_id = $3 AND p.created_by = $4
         )
         "#
     )
     .bind(flag_id)
+    .bind(environment_id)
     .bind(project_id)
     .bind(user_id)
     .fetch_one(&state.db)
@@ -91,19 +93,21 @@ pub async fn create(
 pub async fn list(
     State(state): State<AppState>,
     JwtUser(user_id): JwtUser,
-    Path((project_id, flag_id)): Path<(Uuid, Uuid)>,
+    Path((project_id, environment_id, flag_id)): Path<(Uuid, Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // Verify flag exists and user owns the project
     let flag_exists = sqlx::query_scalar::<_, bool>(
         r#"
         SELECT EXISTS(
             SELECT 1 FROM feature_flags f
-            JOIN projects p ON f.project_id = p.id
-            WHERE f.id = $1 AND f.project_id = $2 AND p.created_by = $3
+            JOIN environments e ON f.environment_id = e.id
+            JOIN projects p ON e.project_id = p.id
+            WHERE f.id = $1 AND f.environment_id = $2 AND e.project_id = $3 AND p.created_by = $4
         )
         "#
     )
     .bind(flag_id)
+    .bind(environment_id)
     .bind(project_id)
     .bind(user_id)
     .fetch_one(&state.db)
@@ -154,7 +158,7 @@ pub async fn list(
 pub async fn get(
     State(state): State<AppState>,
     JwtUser(user_id): JwtUser,
-    Path((project_id, flag_id, rule_id)): Path<(Uuid, Uuid, Uuid)>,
+    Path((project_id, environment_id, flag_id, rule_id)): Path<(Uuid, Uuid, Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // Fetch rule and verify ownership
     let rule = sqlx::query_as::<_, FlagRule>(
@@ -162,12 +166,14 @@ pub async fn get(
         SELECT r.id, r.flag_id, r.rule_type, r.rule_value, r.enabled, r.priority, r.created_at
         FROM flag_rules r
         JOIN feature_flags f ON r.flag_id = f.id
-        JOIN projects p ON f.project_id = p.id
-        WHERE r.id = $1 AND r.flag_id = $2 AND f.project_id = $3 AND p.created_by = $4
+        JOIN environments e ON f.environment_id = e.id
+        JOIN projects p ON e.project_id = p.id
+        WHERE r.id = $1 AND r.flag_id = $2 AND f.environment_id = $3 AND e.project_id = $4 AND p.created_by = $5
         "#,
     )
     .bind(rule_id)
     .bind(flag_id)
+    .bind(environment_id)
     .bind(project_id)
     .bind(user_id)
     .fetch_optional(&state.db)
@@ -198,7 +204,7 @@ pub async fn get(
 pub async fn update(
     State(state): State<AppState>,
     JwtUser(user_id): JwtUser,
-    Path((project_id, flag_id, rule_id)): Path<(Uuid, Uuid, Uuid)>,
+    Path((project_id, environment_id, flag_id, rule_id)): Path<(Uuid, Uuid, Uuid, Uuid)>,
     Json(payload): Json<UpdateRuleRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // Check if rule exists and user owns the project
@@ -207,12 +213,14 @@ pub async fn update(
         SELECT r.id, r.flag_id, r.rule_type, r.rule_value, r.enabled, r.priority, r.created_at
         FROM flag_rules r
         JOIN feature_flags f ON r.flag_id = f.id
-        JOIN projects p ON f.project_id = p.id
-        WHERE r.id = $1 AND r.flag_id = $2 AND f.project_id = $3 AND p.created_by = $4
+        JOIN environments e ON f.environment_id = e.id
+        JOIN projects p ON e.project_id = p.id
+        WHERE r.id = $1 AND r.flag_id = $2 AND f.environment_id = $3 AND e.project_id = $4 AND p.created_by = $5
         "#,
     )
     .bind(rule_id)
     .bind(flag_id)
+    .bind(environment_id)
     .bind(project_id)
     .bind(user_id)
     .fetch_optional(&state.db)
@@ -237,7 +245,7 @@ pub async fn update(
     let updated_rule = sqlx::query_as::<_, FlagRule>(
         r#"
         UPDATE flag_rules
-        SET 
+        SET
             rule_value = COALESCE($2, rule_value),
             enabled = COALESCE($3, enabled),
             priority = COALESCE($4, priority)
@@ -273,7 +281,7 @@ pub async fn update(
 pub async fn delete(
     State(state): State<AppState>,
     JwtUser(user_id): JwtUser,
-    Path((project_id, flag_id, rule_id)): Path<(Uuid, Uuid, Uuid)>,
+    Path((project_id, environment_id, flag_id, rule_id)): Path<(Uuid, Uuid, Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let result = sqlx::query(
         r#"
@@ -281,13 +289,15 @@ pub async fn delete(
         WHERE id = $1 AND flag_id = $2
         AND EXISTS(
             SELECT 1 FROM feature_flags f
-            JOIN projects p ON f.project_id = p.id
-            WHERE f.id = $2 AND f.project_id = $3 AND p.created_by = $4
+            JOIN environments e ON f.environment_id = e.id
+            JOIN projects p ON e.project_id = p.id
+            WHERE f.id = $2 AND f.environment_id = $3 AND e.project_id = $4 AND p.created_by = $5
         )
         "#,
     )
     .bind(rule_id)
     .bind(flag_id)
+    .bind(environment_id)
     .bind(project_id)
     .bind(user_id)
     .execute(&state.db)

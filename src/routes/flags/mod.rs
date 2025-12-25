@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 pub struct FeatureFlag {
     pub id: Uuid,
     pub project_id: Uuid,
+    pub environment_id: Option<Uuid>,
     pub name: String,
     pub key: String,
     pub description: Option<String>,
@@ -40,6 +41,7 @@ pub struct UpdateFlagRequest {
 pub struct FlagResponse {
     pub id: Uuid,
     pub project_id: Uuid,
+    pub environment_id: Option<Uuid>,
     pub name: String,
     pub key: String,
     pub description: Option<String>,

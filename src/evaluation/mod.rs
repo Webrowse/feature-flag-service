@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use uuid::Uuid;
 
 // User context for evaluation
 #[derive(Debug, Deserialize, Clone)]
@@ -9,6 +8,7 @@ pub struct UserContext {
     pub user_id: Option<String>,
     pub user_email: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)] // Reserved for future attribute-based targeting rules
     pub custom_attributes: std::collections::HashMap<String, String>,
 }
 
