@@ -13,9 +13,16 @@ use super::{
 use crate::routes::middleware_auth::JwtUser;
 use crate::state::AppState;
 
+/// Default environments to create for every new project
+const DEFAULT_ENVIRONMENTS: &[(&str, &str)] = &[
+    ("production", "Production"),
+    ("staging", "Staging"),
+];
+
 // HANDLERS
 
 /// Create a new project
+/// Automatically creates default environments (production, staging) within a transaction
 pub async fn create(
     State(state): State<AppState>,
     JwtUser(user_id): JwtUser, // ← Tuple struct destructuring
@@ -24,6 +31,16 @@ pub async fn create(
     // Generate a secure SDK key (this is what client apps will use)
     let sdk_key = generate_sdk_key();
 
+    // Start a transaction to ensure project + default environments are created atomically
+    let mut tx = state.db.begin().await.map_err(|e| {
+        eprintln!("Failed to start transaction: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Database error".to_string(),
+        )
+    })?;
+
+    // Insert the project
     let project = sqlx::query_as::<_, Project>(
         r#"
         INSERT INTO projects (name, description, sdk_key, created_by)
@@ -35,13 +52,45 @@ pub async fn create(
     .bind(&payload.description)
     .bind(&sdk_key)
     .bind(user_id)
-    .fetch_one(&state.db)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| {
         eprintln!("Failed to create project: {:?}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Database error: {}", e),
+        )
+    })?;
+
+    // Create default environments (production and staging)
+    for (env_key, env_name) in DEFAULT_ENVIRONMENTS {
+        sqlx::query(
+            r#"
+            INSERT INTO environments (project_id, name, key, description)
+            VALUES ($1, $2, $3, $4)
+            "#,
+        )
+        .bind(project.id)
+        .bind(*env_name)
+        .bind(*env_key)
+        .bind(format!("{} environment", env_name))
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            eprintln!("Failed to create default environment '{}': {:?}", env_key, e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to create default environment: {}", e),
+            )
+        })?;
+    }
+
+    // Commit the transaction
+    tx.commit().await.map_err(|e| {
+        eprintln!("Failed to commit transaction: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Database error".to_string(),
         )
     })?;
 
